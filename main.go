@@ -125,7 +125,7 @@ func main() {
 		go radiofileDownloadWorker(w, results)
 	}
 
-	pageUrls := SearchPage("스자키니시")
+	pageUrls := SearchPage("MELODY FLAG")
 	log.Print(pageUrls)
 
 	for _, pageUrl := range pageUrls {
