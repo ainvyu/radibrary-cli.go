@@ -110,7 +110,7 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 }
 
 
-func radiofileDownloadWorker(id int, results <-chan radiofile) {
+func radiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool) {
 	for result := range results {
 		log.Print(result)
 		err := downloadBinaryFile(result.url)
@@ -118,6 +118,8 @@ func radiofileDownloadWorker(id int, results <-chan radiofile) {
 			log.Print(fmt.Sprintf("Download Fail: %s", err))
 		}
 	}
+
+	done <- true
 }
 
 func downloadBinaryFile(url string) error {
@@ -184,11 +186,8 @@ type radiofile struct {
 }
 
 func main() {
-	results := make(chan radiofile, 8)
-
-	for w := 1; w <= 8; w++ {
-		go radiofileDownloadWorker(w, results)
-	}
+	results := make(chan radiofile, 128)
+	done := make(chan bool)
 
 	pageUrls := SearchPage("MELODY FLAG")
 	log.Print("Pages", pageUrls)
@@ -197,6 +196,18 @@ func main() {
 		log.Print(fmt.Sprintf("Send %d: %s", i, pageUrl))
 		ExtractRadiofileFromPage(pageUrl, results)
 	}
+
+	workerCount := 8
+	for w := 0; w < workerCount; w++ {
+		go radiofileDownloadWorker(w, results, done)
+	}
+
+	go func() {
+		for i := 0; i < workerCount; i++ {
+			log.Print(fmt.Sprintf("Wait i: %d", i))
+			<- done
+		}
+	}()
 
 	log.Print("Finish")
 }
