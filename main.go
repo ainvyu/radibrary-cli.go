@@ -4,6 +4,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"log"
 	"net/http"
+	"mime"
+	"os"
+	"io"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
@@ -78,7 +81,7 @@ func SearchPage(query string) []string {
 }
 
 func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
-	doc, err := GetDocFromUrl(pageUrl)
+	doc, err := GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
 	if err != nil {
 		return err
 	}
@@ -109,8 +112,70 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 
 func radiofileDownloadWorker(id int, results <-chan radiofile) {
 	for result := range results {
-		log.Printf("%s", result)
+		log.Print(result)
+		err := downloadBinaryFile(result.url)
+		if err != nil {
+			log.Print(fmt.Sprintf("Download Fail: %s", err))
+		}
 	}
+}
+
+func downloadBinaryFile(url string) error {
+	client := &http.Client{}
+	req, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0")
+
+	headRes, headErr := client.Do(req)
+	if headErr != nil {
+		return headErr
+	}
+
+	defer headRes.Body.Close()
+
+	contentDisposition := headRes.Header.Get("Content-Disposition")
+
+	_, params, err := mime.ParseMediaType(contentDisposition)
+	filename := params["filename"]
+	// Create the file
+	out, err := os.Create(filename)
+	if err != nil  {
+		return err
+	}
+	defer out.Close()
+
+	// Get the data
+	downloadClient := &http.Client{}
+	getReq, getErr := http.NewRequest("GET", url, nil)
+	if getErr != nil {
+		log.Fatal(fmt.Sprintf("Fail to create request object: %s", url))
+		return getErr
+	}
+	getReq.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0")
+
+	res, err := downloadClient.Do(getReq)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Fail to download: %s", url))
+		return err
+	}
+	defer res.Body.Close()
+
+	// Check server response
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", res.Status)
+	}
+
+	// Writer the body to file
+	_, err = io.Copy(out, res.Body)
+	if err != nil  {
+		log.Fatal(fmt.Sprintf("Fail to copy: %s", url))
+		return err
+	}
+
+	return nil
 }
 
 type radiofile struct {
@@ -119,16 +184,19 @@ type radiofile struct {
 }
 
 func main() {
-	results := make(chan radiofile, 100)
+	results := make(chan radiofile, 8)
 
-	for w := 1; w <= 16; w++ {
+	for w := 1; w <= 8; w++ {
 		go radiofileDownloadWorker(w, results)
 	}
 
 	pageUrls := SearchPage("MELODY FLAG")
-	log.Print(pageUrls)
+	log.Print("Pages", pageUrls)
 
-	for _, pageUrl := range pageUrls {
+	for i, pageUrl := range pageUrls {
+		log.Print(fmt.Sprintf("Send %d: %s", i, pageUrl))
 		ExtractRadiofileFromPage(pageUrl, results)
 	}
+
+	log.Print("Finish")
 }
