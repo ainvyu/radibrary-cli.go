@@ -6,6 +6,7 @@ import (
 	"./lib"
 	"strings"
 	"math"
+	"flag"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
@@ -111,10 +112,13 @@ type radiofile struct {
 }
 
 func main() {
-	results := make(chan radiofile, math.Pow(2, 16))
+	query := flag.String("query", "", "Query Sentence")
+	log.Printf("Query: %s", *query)
+
+	results := make(chan radiofile, int(math.Pow(2, 16)))
 	done := make(chan bool)
 
-	pageUrls := SearchPage("MELODY FLAG")
+	pageUrls := SearchPage(*query)
 	log.Print("Pages", pageUrls)
 
 	for i, pageUrl := range pageUrls {
