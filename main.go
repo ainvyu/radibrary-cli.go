@@ -3,37 +3,17 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
-	"net/http"
-	"mime"
-	"os"
-	"io"
+	"./lib"
+	"strings"
+	"math"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
 
-func GetDocFromUrl(url string) (*goquery.Document, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0")
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
-	return goquery.NewDocumentFromResponse(res)
-}
-
-func GetSearchResults(url string) ([]string, error) {
+func GetItemsFromSearchPage(url string) ([]string, error) {
 	log.Printf("GetItems(url: %s)", url)
 
-	doc, err := GetDocFromUrl(url)
+	doc, err := lib.GetDocFromUrl(url)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +43,7 @@ func SearchPage(query string) []string {
 		encodedPageUrl := fmt.Sprintf("%s/search/%s?page=%d", hostURL, query, i)
 		log.Println(encodedPageUrl)
 
-		items, err := GetSearchResults(encodedPageUrl)
+		items, err := GetItemsFromSearchPage(encodedPageUrl)
 		if err != nil {
 			break
 		}
@@ -81,12 +61,12 @@ func SearchPage(query string) []string {
 }
 
 func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
-	doc, err := GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
+	doc, err := lib.GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
 	if err != nil {
 		return err
 	}
 
-	title := doc.Find(".tit_post").Text()
+	title := strings.TrimSpace(doc.Find(".area_title .tit_post").Text())
 
 	fileUrls := doc.Find(".moreless_content a").Map(func(i int, s *goquery.Selection) string {
 		url, err := s.Attr("href")
@@ -106,78 +86,23 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 		result <- file
 	}
 
+	log.Printf("Page %s: End to extract", pageUrl)
+
 	return nil
 }
 
-
-func radiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool) {
+func RadiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool) {
 	for result := range results {
 		log.Print(result)
-		err := downloadBinaryFile(result.url)
+		err := lib.DownloadBinaryFile(result.url)
 		if err != nil {
-			log.Print(fmt.Sprintf("Download Fail: %s", err))
+			log.Printf("Download Fail %s - %s: %s", result.title, result.url, err)
 		}
 	}
 
+	log.Printf("%d: Start return done", id)
 	done <- true
-}
-
-func downloadBinaryFile(url string) error {
-	client := &http.Client{}
-	req, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0")
-
-	headRes, headErr := client.Do(req)
-	if headErr != nil {
-		return headErr
-	}
-
-	defer headRes.Body.Close()
-
-	contentDisposition := headRes.Header.Get("Content-Disposition")
-
-	_, params, err := mime.ParseMediaType(contentDisposition)
-	filename := params["filename"]
-	// Create the file
-	out, err := os.Create(filename)
-	if err != nil  {
-		return err
-	}
-	defer out.Close()
-
-	// Get the data
-	downloadClient := &http.Client{}
-	getReq, getErr := http.NewRequest("GET", url, nil)
-	if getErr != nil {
-		log.Fatal(fmt.Sprintf("Fail to create request object: %s", url))
-		return getErr
-	}
-	getReq.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0")
-
-	res, err := downloadClient.Do(getReq)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Fail to download: %s", url))
-		return err
-	}
-	defer res.Body.Close()
-
-	// Check server response
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", res.Status)
-	}
-
-	// Writer the body to file
-	_, err = io.Copy(out, res.Body)
-	if err != nil  {
-		log.Fatal(fmt.Sprintf("Fail to copy: %s", url))
-		return err
-	}
-
-	return nil
+	log.Printf("%d: End return done", id)
 }
 
 type radiofile struct {
@@ -186,28 +111,31 @@ type radiofile struct {
 }
 
 func main() {
-	results := make(chan radiofile, 128)
+	results := make(chan radiofile, math.Pow(2, 16))
 	done := make(chan bool)
 
 	pageUrls := SearchPage("MELODY FLAG")
 	log.Print("Pages", pageUrls)
 
 	for i, pageUrl := range pageUrls {
-		log.Print(fmt.Sprintf("Send %d: %s", i, pageUrl))
+		log.Printf("Send page URL %d: %s", i, pageUrl)
+		//go ExtractRadiofileFromPage(pageUrl, results)
 		ExtractRadiofileFromPage(pageUrl, results)
 	}
 
+	close(results)
+
 	workerCount := 8
+	log.Printf("Create download worker")
 	for w := 0; w < workerCount; w++ {
-		go radiofileDownloadWorker(w, results, done)
+		go RadiofileDownloadWorker(w, results, done)
 	}
 
-	go func() {
-		for i := 0; i < workerCount; i++ {
-			log.Print(fmt.Sprintf("Wait i: %d", i))
-			<- done
-		}
-	}()
+	for i := 0; i < workerCount; i++ {
+		log.Printf("Wait i: %d", i)
+		<- done
+		log.Printf("Received %d", i)
+	}
 
-	log.Print("Finish")
+	log.Printf("Finish")
 }
