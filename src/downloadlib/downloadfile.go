@@ -1,4 +1,4 @@
-package internal
+package downloadlib
 
 import (
 	"net/http"
