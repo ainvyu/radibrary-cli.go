@@ -113,6 +113,8 @@ type radiofile struct {
 
 func main() {
 	query := flag.String("query", "", "Query Sentence")
+	flag.Parse()
+
 	log.Printf("Query: %s", *query)
 
 	results := make(chan radiofile, int(math.Pow(2, 16)))
