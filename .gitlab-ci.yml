@@ -4,7 +4,6 @@ variables:
   REPO_NAME: gitlab.com/eniv/radibrary-downloader-go
 
 stages:
-    - resolve_dependency
     - test
     - build
 
@@ -19,7 +18,7 @@ before_script:
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
   - go get -u github.com/golang/dep/cmd/dep
-  - dep ensure
+  - dep ensure -update
 
 format:
     stage: test
