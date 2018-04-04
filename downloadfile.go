@@ -1,4 +1,4 @@
-package downloadlib
+package radibrary_downloader_go
 
 import (
 	"net/http"
