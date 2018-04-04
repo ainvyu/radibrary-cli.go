@@ -3,6 +3,10 @@ image: golang:latest
 variables:
   REPO_NAME: gitlab.com/eniv/radibrary-downloader-go
 
+stages:
+    - test
+    - build
+
 # The problem is that to be able to use go get, one needs to put
 # the repository in the $GOPATH. So for example if your gitlab domain
 # is gitlab.com, and that your repository is namespace/project, and
@@ -13,10 +17,7 @@ before_script:
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-
-stages:
-    - test
-    - build
+  - go get -u github.com/golang/dep/cmd/dep
 
 format:
     stage: test
