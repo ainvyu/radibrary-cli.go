@@ -1,4 +1,4 @@
-package radibrary_downloader_go
+package main
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"math"
 	"flag"
+	"radibrary-downloader-go"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
@@ -13,7 +14,7 @@ const hostURL = "http://radibrary.tistory.com/"
 func GetItemsFromSearchPage(url string) ([]string, error) {
 	log.Printf("GetItems(url: %s)", url)
 
-	doc, err := GetDocFromUrl(url)
+	doc, err := radibrary.GetDocFromUrl(url)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func SearchPage(query string) []string {
 }
 
 func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
-	doc, err := GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
+	doc, err := radibrary.GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
 	if err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 func RadiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool) {
 	for result := range results {
 		log.Print(result)
-		err := DownloadBinaryFile(result.url)
+		err := radibrary.DownloadBinaryFile(result.url)
 		if err != nil {
 			log.Printf("Download Fail %s - %s: %s", result.title, result.url, err)
 		}
