@@ -1,9 +1,9 @@
-package src
+package radibrary_downloader_go
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
-	"./downloadlib"
+	"./src/downloadlib"
 	"strings"
 	"math"
 	"flag"
