@@ -39,7 +39,7 @@ linux_build:
 macos_build:
   stage: build
   variables:
-    GOOS: macos
+    GOOS: darwin
     GOARCH: amd64
   script:
     - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli cmd/radibrary-cli/radibrary-cli.go
