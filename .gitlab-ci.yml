@@ -4,8 +4,8 @@ variables:
   REPO_NAME: gitlab.com/eniv/radibrary-downloader-go
 
 stages:
-    - test
-    - build
+  - test
+  - build
 
 # The problem is that to be able to use go get, one needs to put
 # the repository in the $GOPATH. So for example if your gitlab domain
@@ -21,17 +21,28 @@ before_script:
   - dep ensure
 
 format:
-    stage: test
-    script:
-      - go fmt $(go list ./... | grep -v /vendor/)
-      - go vet $(go list ./... | grep -v /vendor/)
-      - go test -race $(go list ./... | grep -v /vendor/)
+  stage: test
+  script:
+    - go fmt $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - go test -race $(go list ./... | grep -v /vendor/)
 
-compile:
-    stage: build
-    script:
-      #- go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli
-      - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli cmd/radibrary-cli/radibrary-cli.go
-    artifacts:
-      paths:
-        - radibrary-cli
+linux_build:
+  stage: build
+  script:
+    #- go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli
+    - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli cmd/radibrary-cli/radibrary-cli.go
+  artifacts:
+    paths:
+      - radibrary-cli
+
+macos_build:
+  stage: build
+  variables:
+    GOOS=macos
+    GOARCH=amd64
+  script:
+    - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/radibrary-cli cmd/radibrary-cli/radibrary-cli.go
+  artifacts:
+    paths:
+    - radibrary-cli
