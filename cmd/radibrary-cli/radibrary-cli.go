@@ -6,7 +6,7 @@ import (
 	"strings"
 	"math"
 	"flag"
-	"gitlab.com/eniv/radibrary-downloader-go"
+	"github.com/ainvyu/radibrary-cli.go"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
