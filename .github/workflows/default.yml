@@ -1,17 +1,20 @@
 name: default
 
-on: push
+on: [push]
 
 jobs:
-
   build:
     name: Build
-    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        go-version: [1.14.x]
+        os: [ubuntu-16.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.14
+        go-version: ${{ matrix.go-version }}
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -44,11 +47,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: linux-binary
-        path: target/radibrary-cli
-    - name: Build (macOS)
-      run: GOOS=macos GOARCH=amd64 go build -race -ldflags "-extldflags '-static'" -o target/radibrary-cli cmd/radibrary-cli/*.go
-    - name: Upload Artifact (macOS)
-      uses: actions/upload-artifact@v2
-      with:
-        name: macos-binary
         path: target/radibrary-cli
