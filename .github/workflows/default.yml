@@ -35,11 +35,18 @@ jobs:
       with:
         version: v1.29
     - name: Test
-      run: go test -v .
-    - name: Build
-      run: go build -v .
-    - name: Upload Artifact
+      run: go test -v src/.
+    - name: Build (Linux)
+      run: go build -race -ldflags "-extldflags '-static'" -o target/radibrary-cli src/*.go
+    - name: Upload Artifact (Linux)
       uses: actions/upload-artifact@v2
       with:
-        name: binary
+        name: linux-binary
+        path: target/radibrary-cli
+    - name: Build (macOS)
+      run: GOOS=macos GOARCH=amd64 go build -race -ldflags "-extldflags '-static'" -o target/radibrary-cli src/*.go
+    - name: Upload Artifact (macOS)
+      uses: actions/upload-artifact@v2
+      with:
+        name: macos-binary
         path: target/radibrary-cli
