@@ -7,7 +7,7 @@ import (
 	"math"
 	"strings"
 
-	"radibrary/src/downloader"
+	"radibrary/downloader"
 
 	"github.com/PuerkitoBio/goquery"
 )
