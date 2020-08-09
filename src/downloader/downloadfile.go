@@ -1,12 +1,13 @@
-package radibrary
+package downloader
 
 import (
-	"net/http"
-	"mime"
-	"os"
-	"log"
 	"fmt"
 	"io"
+	"log"
+	"mime"
+	"net/http"
+	"os"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -28,7 +29,6 @@ func GetDocFromUrl(url string) (*goquery.Document, error) {
 
 	return goquery.NewDocumentFromResponse(res)
 }
-
 
 func DownloadBinaryFile(url string) error {
 	client := &http.Client{}
@@ -52,7 +52,7 @@ func DownloadBinaryFile(url string) error {
 	filename := params["filename"]
 	// Create the file
 	out, err := os.Create(filename)
-	if err != nil  {
+	if err != nil {
 		return err
 	}
 	defer out.Close()
@@ -80,7 +80,7 @@ func DownloadBinaryFile(url string) error {
 
 	// Writer the body to file
 	_, err = io.Copy(out, res.Body)
-	if err != nil  {
+	if err != nil {
 		log.Fatal(fmt.Sprintf("Fail to copy: %s", url))
 		return err
 	}

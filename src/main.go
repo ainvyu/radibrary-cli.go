@@ -1,20 +1,24 @@
 package main
+
 import (
-	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"log"
-	"strings"
-	"math"
 	"flag"
-	"github.com/ainvyu/radibrary-cli.go"
+	"fmt"
+	"log"
+	"math"
+	"strings"
+
+	"radibrary/src/downloader"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const hostURL = "http://radibrary.tistory.com/"
 
+// GetItemsFromSearchPage is
 func GetItemsFromSearchPage(url string) ([]string, error) {
 	log.Printf("GetItems(url: %s)", url)
 
-	doc, err := radibrary.GetDocFromUrl(url)
+	doc, err := downloader.GetDocFromUrl(url)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +66,7 @@ func SearchPage(query string) []string {
 }
 
 func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
-	doc, err := radibrary.GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
+	doc, err := downloader.GetDocFromUrl(fmt.Sprintf("%s%s", hostURL, pageUrl))
 	if err != nil {
 		return err
 	}
@@ -95,7 +99,7 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 func RadiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool) {
 	for result := range results {
 		log.Print(result)
-		err := radibrary.DownloadBinaryFile(result.url)
+		err := downloader.DownloadBinaryFile(result.url)
 		if err != nil {
 			log.Printf("Download Fail %s - %s: %s", result.title, result.url, err)
 		}
@@ -108,7 +112,7 @@ func RadiofileDownloadWorker(id int, results <-chan radiofile, done chan<- bool)
 
 type radiofile struct {
 	title string
-	url  string
+	url   string
 }
 
 func main() {
@@ -139,7 +143,7 @@ func main() {
 
 	for i := 0; i < workerCount; i++ {
 		log.Printf("Wait i: %d", i)
-		<- done
+		<-done
 		log.Printf("Received %d", i)
 	}
 
