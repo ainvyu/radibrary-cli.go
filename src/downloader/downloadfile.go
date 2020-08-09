@@ -26,8 +26,11 @@ func GetDocFromUrl(url string) (*goquery.Document, error) {
 	}
 
 	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+	}
 
-	return goquery.NewDocumentFromResponse(res)
+	return goquery.NewDocumentFromReader(res.Body)
 }
 
 func DownloadBinaryFile(url string) error {
@@ -49,6 +52,10 @@ func DownloadBinaryFile(url string) error {
 	contentDisposition := headRes.Header.Get("Content-Disposition")
 
 	_, params, err := mime.ParseMediaType(contentDisposition)
+	if err != nil {
+		return err
+	}
+
 	filename := params["filename"]
 	// Create the file
 	out, err := os.Create(filename)

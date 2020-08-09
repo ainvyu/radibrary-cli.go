@@ -26,8 +26,8 @@ func GetItemsFromSearchPage(url string) ([]string, error) {
 	log.Print("Start to find CSS selector")
 	// Find the review items
 	items := doc.Find("div.list_content > .link_post").Map(func(i int, s *goquery.Selection) string {
-		itemPath, err := s.Attr("href")
-		if err != true {
+		itemPath, exists := s.Attr("href")
+		if !exists {
 			log.Fatal(err)
 			return ""
 		}
@@ -45,10 +45,10 @@ func SearchPage(query string) []string {
 	var allUrls []string
 
 	for i := 1; ; i++ {
-		encodedPageUrl := fmt.Sprintf("%s/search/%s?page=%d", hostURL, query, i)
-		log.Println(encodedPageUrl)
+		encodedPageURL := fmt.Sprintf("%s/search/%s?page=%d", hostURL, query, i)
+		log.Println(encodedPageURL)
 
-		items, err := GetItemsFromSearchPage(encodedPageUrl)
+		items, err := GetItemsFromSearchPage(encodedPageURL)
 		if err != nil {
 			break
 		}
@@ -57,9 +57,7 @@ func SearchPage(query string) []string {
 			break
 		}
 
-		for _, item := range items {
-			allUrls = append(allUrls, item)
-		}
+		allUrls = append(allUrls, items...)
 	}
 
 	return allUrls
@@ -74,8 +72,8 @@ func ExtractRadiofileFromPage(pageUrl string, result chan<- radiofile) error {
 	title := strings.TrimSpace(doc.Find(".area_title .tit_post").Text())
 
 	fileUrls := doc.Find(".moreless_content a").Map(func(i int, s *goquery.Selection) string {
-		url, err := s.Attr("href")
-		if err != true {
+		url, exists := s.Attr("href")
+		if !exists {
 			return ""
 		}
 
@@ -130,7 +128,10 @@ func main() {
 	for i, pageUrl := range pageUrls {
 		log.Printf("Send page URL %d: %s", i, pageUrl)
 		//go ExtractRadiofileFromPage(pageUrl, results)
-		ExtractRadiofileFromPage(pageUrl, results)
+		err := ExtractRadiofileFromPage(pageUrl, results)
+		if err != nil {
+			log.Fatalf("Extract Fail %s - pageUrl: %s", err, pageUrl)
+		}
 	}
 
 	close(results)
